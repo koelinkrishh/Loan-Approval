@@ -1,0 +1,12 @@
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+tensorflow
+xgboost
+Flask
+
+# -e . 
+# Automatically run setup.py
+
