@@ -2,11 +2,13 @@ numpy
 pandas
 matplotlib
 seaborn
+plotly
 scikit-learn
 tensorflow
 xgboost
 Flask
-
+jupyter
+ipykernel
 # -e . 
 # Automatically run setup.py
 
