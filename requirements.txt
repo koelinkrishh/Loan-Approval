@@ -9,6 +9,8 @@ xgboost
 Flask
 jupyter
 ipykernel
+optuna
+keras-tuner
 # -e . 
 # Automatically run setup.py
 
