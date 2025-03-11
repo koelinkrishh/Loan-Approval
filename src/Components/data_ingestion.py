@@ -1,12 +1,15 @@
 import os
 import sys
-from src.exception import CustomException
-from src.logger import logging
+from src.Exception import CustomException
+from src.Logging import logging
 
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
 from dataclasses import dataclass
+
+from src.Components.feature_engineering import DataTransformation
+from src.Components.feature_engineering import DataTransformationConfig
 
 ## Class to track down input data
 @dataclass
@@ -30,11 +33,14 @@ class DataIngestion:
    def initiate_data_ingestion(self):
       logging.info("Entered data ingestion method or component")
       try:
-         df = pd.read_csv('../Dataset/Loan_default.csv')
+         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # Move up 3 levels to the project root
+         dataset_path = os.path.join(BASE_DIR, "Dataset", "Loan_default.csv")
+         print(dataset_path)
+         df = pd.read_csv(dataset_path)
          logging.info("Read the dataset as dataframe")
          
          ## Create the directory for the training data if it doesn't exist
-         os.makedirs(os.path.dirname(self.ingestion.config.train_data_path), exist_ok=True)
+         os.makedirs(os.path.dirname(self.ingestion_config.train_data_path), exist_ok=True)
          # Send raw data into its location
          df.to_csv(self.ingestion_config.raw_data_path, index=False, header=True)
          
@@ -53,5 +59,10 @@ class DataIngestion:
 
 if __name__=="__main__":
    obj = DataIngestion()
-   train_data, test_data = obj.initiate_data_ingestion
-   print(train_data, test_data)
+   train_data, test_data = obj.initiate_data_ingestion()
+   # print(train_data, test_data)
+   
+   data_trans = DataTransformation()
+   data_trans.Initiate_data_transformation(train_data, test_data)
+   
+   

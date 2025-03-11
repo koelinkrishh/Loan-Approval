@@ -9,8 +9,8 @@ xgboost
 Flask
 jupyter
 ipykernel
-optuna
 keras-tuner
+dill
 # -e . 
 # Automatically run setup.py
 
