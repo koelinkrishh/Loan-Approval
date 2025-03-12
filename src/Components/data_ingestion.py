@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from src.Components.feature_engineering import DataTransformation
 from src.Components.feature_engineering import DataTransformationConfig
 
+from src.Components.model_training import ModelTrainerConfig
+from src.Components.model_training import ModelTrainer
+
 ## Class to track down input data
 @dataclass
 class DataIngestionConfig:
@@ -63,6 +66,9 @@ if __name__=="__main__":
    # print(train_data, test_data)
    
    data_trans = DataTransformation()
-   data_trans.Initiate_data_transformation(train_data, test_data)
+   train_arr,test_arr,_ = data_trans.Initiate_data_transformation(train_data, test_data)
    
+   Model_trainer = ModelTrainer()
+   result = Model_trainer.Initiate_model_trainer(train_arr, test_arr)
+   print("Accuracy Score for Best model: ",result)
    
