@@ -84,6 +84,11 @@ class DataTransformation:
          
          ## Defining Column Transformer
          Ct = ColumnTransformer(transformers=[
+            ## Imputing layers
+            ('num_imputer', SimpleImputer(strategy='median'), numerical_features + ['Age','DTIRatio','NumCreditLines']),
+            ('cat_imputer', SimpleImputer(strategy='most_frequent'), binary_features+ ordinal_features+ nominal_features+ label_encoded_features),
+            
+            ## Feature transformation layers
             ('binary', FT_binary, binary_features),
             ('ordinal', OrdinalEncoder(categories=[["High School","Bachelor's","Master's","PhD"]]), ordinal_features),
             ('Nominal->OHE', OneHotEncoder(drop='first'), nominal_features),
