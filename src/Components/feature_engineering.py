@@ -1,164 +1,153 @@
 import os
 import sys
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass
+
 from sklearn.compose import ColumnTransformer
+
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, LabelEncoder, KBinsDiscretizer
-from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
-
+from sklearn.preprocessing import MinMaxScaler, FunctionTransformer
 
 from src.Exception import CustomException
 from src.Logging import logging
-
-from src.Components.utils import save_object
+from src.Components.utils import save_object, load_object
 
 @dataclass
 class DataTransformationConfig:
    preprocessor_obj_file_path = os.path.join('artifacts', 'preprocessor.pkl')
 
+
 class DataTransformation:
    def __init__(self):
       self.data_transformation_config = DataTransformationConfig()
+      self.binning_model = None  # Store binning model globally
+      self.scaler = MinMaxScaler()  # Store MinMaxScaler globally
    
-   def get_transformed_column_names(ct, original_features):
-      """Extract transformed column names from ColumnTransformer."""
-      output_features = []
+   def bin_and_scale_age(self, dataset):
+      if not isinstance(dataset, pd.DataFrame):
+         dataset = pd.DataFrame(dataset, columns=['Age'])
       
-      for name, transformer, features in ct.transformers_:
-         if transformer == 'passthrough':
-            output_features.extend(features)
-         elif transformer == 'drop':
-            continue
-         elif hasattr(transformer, "get_feature_names_out"):
-            output_features.extend(transformer.get_feature_names_out(features))
-         else:
-            # Handle FunctionTransformer case
-            output_features.extend([f"{name}_{i}" for i in range(len(features))])
-            
-      return output_features
+      dataset = dataset.values.reshape(-1, 1)  # Ensure it's 2D
+      
+      if self.binning_model is None:
+         self.binning_model = KBinsDiscretizer(n_bins=14, encode='ordinal', strategy='uniform')
+         dataset = self.binning_model.fit_transform(dataset)
+      else:
+         dataset = self.binning_model.transform(dataset)
+      
+      if not hasattr(self, "scaler_fitted"):
+         self.scaler.fit(dataset)
+         self.scaler_fitted = True
+      
+      return self.scaler.transform(dataset)
    
    def get_data_transformer_object(self):
-      """ 
-      This function is responsible for data transformation
-      """
       try:
-         ## Defining Feature Classes
-         binary_features = ['HasCoSigner', 'HasDependents','HasMortgage']
+         binary_features = ['HasCoSigner', 'HasDependents', 'HasMortgage']
          ordinal_features = ['Education']
-         nominal_features = ['MaritalStatus','LoanPurpose']
+         nominal_features = ['MaritalStatus', 'LoanPurpose']
          label_encoded_features = ['EmploymentType']
          numerical_features = ['Income', 'LoanAmount', 'CreditScore', 'MonthsEmployed', 'InterestRate', 'LoanTerm']
          
-         ## Custom function for binary encoding:
          def BinaryEncoder(dataset):
+            if not isinstance(dataset, pd.DataFrame):
+               dataset = pd.DataFrame(dataset, columns=binary_features)
             for col in binary_features:
-               dataset[col] = dataset[col].map({'Yes':1, 'No':0})
+               dataset[col] = dataset[col].astype(str).map({'Yes': 1, 'No': 0})
             return dataset
          
          def Label_encode(dataset):
-            return dataset.apply(lambda col: LabelEncoder().fit_transform(col) if col.dtype=='O' else col)
-         
-         ## Custom transformer for Age as it needs both discretization and scaling
-         def bin_and_scale_age(dataset):
-            if dataset.ndim == 1: # Reshape into 2D
-               dataset = dataset.reshape(-1, 1)
-            
-            # Step-1: Discretization
-            kbins = KBinsDiscretizer(n_bins=14, encode='ordinal', strategy='uniform')
-            dataset = kbins.fit_transform(dataset)
-            
-            # Step-2: Scale the binned values
-            scaler = MinMaxScaler()
-            dataset = scaler.fit_transform(dataset)
-            
+            if not isinstance(dataset, pd.DataFrame):
+               dataset = pd.DataFrame(dataset, columns=label_encoded_features)
+            for col in label_encoded_features:
+               if col not in self.label_encoders:
+                  self.label_encoders[col] = LabelEncoder()
+                  dataset[col] = self.label_encoders[col].fit_transform(dataset[col])
+               else:
+                  dataset[col] = self.label_encoders[col].transform(dataset[col])
             return dataset
          
-         ## Function Transformers
-         FT_binary = FunctionTransformer(BinaryEncoder, validate=False)
-         FT_label = FunctionTransformer(Label_encode, validate=False)
-         FT_age = FunctionTransformer(bin_and_scale_age, validate=False)
+         self.label_encoders = {}
          
-         ## Defining Column Transformer
-         Ct = ColumnTransformer(transformers=[
-            ## Imputing layers
-            ('num_imputer', SimpleImputer(strategy='median'), numerical_features + ['Age','DTIRatio','NumCreditLines']),
-            ('cat_imputer', SimpleImputer(strategy='most_frequent'), binary_features+ ordinal_features+ nominal_features+ label_encoded_features),
-            
-            ## Feature transformation layers
-            ('binary', FT_binary, binary_features),
-            ('ordinal', OrdinalEncoder(categories=[["High School","Bachelor's","Master's","PhD"]]), ordinal_features),
-            ('Nominal->OHE', OneHotEncoder(drop='first'), nominal_features),
-            ('Label->LE', FT_label, label_encoded_features),
-            ('Age Transformer', FT_age, ['Age']),
-            ('Numerical Scaling-> MinMax', MinMaxScaler(), numerical_features),
-         ]  ,remainder='passthrough',
-            force_int_remainder_cols = False, # This ensures column names remain correctly
-         )
-         
-         ## Creating a Pipeline
-         pipeline = Pipeline(steps=[
-            #('imputer', SimpleImputer(strategy='most_frequent')),
-            ('column_transformer', Ct)
+         FT_binary = Pipeline(steps=[
+            ('binary_imputer', SimpleImputer(strategy='most_frequent')),
+            ('binary_transformer', FunctionTransformer(BinaryEncoder, validate=False))
+         ])
+         FT_label = Pipeline(steps=[
+            ('label_imputer', SimpleImputer(strategy='most_frequent')),
+            ('label_transformer', FunctionTransformer(Label_encode, validate=False))
+         ])
+         FT_age = Pipeline(steps=[
+            ('age_imputer', SimpleImputer(strategy='median')),
+            ('age_transformer', FunctionTransformer(self.bin_and_scale_age, validate=False))
          ])
          
-         return pipeline
+         numerical_pipeline = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', MinMaxScaler())
+         ])
+         OHE_pipeline = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('onehot', OneHotEncoder(drop='first', sparse_output=False))
+         ])
+         Ordinal_pipeline = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('ordinal', OrdinalEncoder(categories=[["High School", "Bachelor's", "Master's", "PhD"]]))
+         ])
+         
+         Ct = ColumnTransformer(transformers=[
+            ('num_pipeline', numerical_pipeline, numerical_features),
+            ('binary_pipeline', FT_binary, binary_features),
+            ('label_pipeline', FT_label, label_encoded_features),
+            ('OHE_pipeline', OHE_pipeline, nominal_features),
+            ('Ordinal_pipeline', Ordinal_pipeline, ordinal_features),
+            ('age_pipeline', FT_age, ['Age'])
+         ], remainder='passthrough', n_jobs=-1)
+         
+         return Pipeline(steps=[('column_transformer', Ct)])
+      
       except Exception as e:
          raise CustomException(e, sys)
    
+   
    def Initiate_data_transformation(self, train_path, test_path):
-      ## Train,test path come from data ingestion object
       try:
-         training_df = pd.read_csv(train_path)
+         dataset = pd.read_csv(train_path)
          test_df = pd.read_csv(test_path)
-         
-         
          logging.info("Reading train and test data completed")
          
-         ## Remember to drop Loan ID column
-         if "LoanID" in training_df.columns:
-            training_df = training_df.drop(columns=["LoanID"], axis=1)
+         if "LoanID" in dataset.columns:
+            dataset = dataset.drop(columns=["LoanID"], axis=1)
          if "LoanID" in test_df.columns:
             test_df = test_df.drop(columns=["LoanID"], axis=1)
          
          logging.info("Obtaining preprocessing object")
-         
-   ## Object which will perform all given functions -> preprocessor_obj gets pipeline
          self.preprocessing_obj = self.get_data_transformer_object()
          
-         Target = "Default" # Target column name
-         
-         input_feature_train = training_df.drop(columns=[Target], axis=1)
+         Target = "Default"
+         input_feature_train = dataset.drop(columns=[Target], axis=1)
          input_feature_test = test_df.drop(columns=[Target], axis=1)
-         target_feature_train = training_df[Target]
-         target_feature_test = test_df[Target]
+         target_feature_train = dataset[[Target]]
+         target_feature_test = test_df[[Target]]
          
          logging.info("Applying preprocessing object on training and testing datasets.")
-         
-         # # Ensure input is a DataFrame before transformation
-         # input_feature_train = pd.DataFrame(input_feature_train)
-         # input_feature_test = pd.DataFrame(input_feature_test)
-         
          Input_train_arr = self.preprocessing_obj.fit_transform(input_feature_train)
-         Input_test_arr = self.preprocessing_obj.fit_transform(input_feature_test)
+         Input_test_arr = self.preprocessing_obj.transform(input_feature_test)
          
          train_arr = np.c_[Input_train_arr, np.array(target_feature_train)]
          test_arr = np.c_[Input_test_arr, np.array(target_feature_test)]
          
          logging.info("Saved preprocessing object.")
-         
-         ## Save preprocessor object as a pickle file
          save_object(
-            file_path = self.data_transformation_config.preprocessor_obj_file_path,
+            file_path=self.data_transformation_config.preprocessor_obj_file_path,
             obj=self.preprocessing_obj
          )
-         
-         return (train_arr,test_arr, self.data_transformation_config.preprocessor_obj_file_path)
+         print("Preprocessing object saved successfully.")
+         return (train_arr, test_arr, self.data_transformation_config.preprocessor_obj_file_path)
+      
       except Exception as e:
+         print(f"Error saving object: {e}")
          raise CustomException(e, sys)
-
-
-

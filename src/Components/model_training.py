@@ -4,6 +4,9 @@ import sys
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
+
+from imblearn.over_sampling import SMOTE
 from sklearn.metrics import accuracy_score
 
 from sklearn.linear_model import LogisticRegression
@@ -40,15 +43,24 @@ class ModelTrainer:
          X_train,X_test, y_train,y_test = (train_array[:,:-1], test_array[:,:-1], 
             train_array[:,-1], test_array[:,-1])
          
+         # # Apply SMOTE to balance dataset
+         logging.info("Applying SMOTE to balance the dataset")
+         
+         print("Class distribution before SMOTE:\n", pd.Series(y_train).value_counts())
+         
+         smote = SMOTE(sampling_strategy=1, random_state=42)  # Make `1`s 50% of `0`s
+         X_train, y_train = smote.fit_resample(X_train, y_train)
+         
+         print("Class distribution after SMOTE:\n", pd.Series(y_train).value_counts())
          
          models = {
             'Logistic Regression': LogisticRegression(),
             'Decision Tree': DecisionTreeClassifier(),
             # 'SVM': SVC(),
             'Guassian': GaussianNB(),
-            # 'KNN': KNeighborsClassifier(),
+            'KNN': KNeighborsClassifier(),
             'AdaBoost': AdaBoostClassifier(),
-            # 'Gradient Boost': GradientBoostingClassifier(),
+            'Gradient Boost': GradientBoostingClassifier(),
             'XGBoost': XGBClassifier()
          }
          
@@ -60,6 +72,7 @@ class ModelTrainer:
          best_model_name = list(model_report.keys())[best_model_index]
          best_model = models[best_model_name]
          
+         print("Best model is ",best_model_name)
          
          if best_model_score<0.6:
             raise CustomException("No Best model found")

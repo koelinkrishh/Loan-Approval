@@ -8,6 +8,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from dataclasses import dataclass
 
+from sklearn.utils import resample
+
 from src.Components.feature_engineering import DataTransformation
 from src.Components.feature_engineering import DataTransformationConfig
 
@@ -42,6 +44,14 @@ class DataIngestion:
          df = pd.read_csv(dataset_path)
          logging.info("Read the dataset as dataframe")
          
+         ## Downsampling to reduce dataset size:
+         df_majority = df[df['Default'] == 0]
+         df_minority = df[df['Default'] == 1]
+         
+         df_majority = resample(df_majority, n_samples=len(df_minority)*2,random_state=42)
+         
+         df = pd.concat([df_majority, df_minority])
+         
          ## Create the directory for the training data if it doesn't exist
          os.makedirs(os.path.dirname(self.ingestion_config.train_data_path), exist_ok=True)
          # Send raw data into its location
@@ -49,7 +59,8 @@ class DataIngestion:
          
          ## Splitting Dataset
          logging.info("Train Test split initiated")
-         train_set, test_set = train_test_split(df, test_size=0.2, random_state=42)
+         train_set, test_set = train_test_split(df, test_size=0.3, random_state=42)
+         
          train_set.to_csv(self.ingestion_config.train_data_path, index=False, header=True)
          test_set.to_csv(self.ingestion_config.test_data_path, index=False, header=True)
          logging.info("Ingestion of the data is completed")
