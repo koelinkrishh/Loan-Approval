@@ -1,0 +1,30 @@
+## This contains the output of my final run of entire pipeline
+
+(VirtualEnv) C:\D Drive\coding\Python-projects\Loan_Prediction>python -m src.Components.data_ingestion
+C:\D Drive\coding\Python-projects\Loan_Prediction\Dataset\Loan_default.csv
+Preprocessing object saved successfully.
+Class distribution before SMOTE:
+ 0.0    41529
+1.0    20742
+Name: count, dtype: int64
+Class distribution after SMOTE:
+ 0.0    41529
+1.0    41529
+Name: count, dtype: int64
+X_train shape:  (83058, 20)
+X_test shape:  (26688, 20)
+y_train shape:  (83058,)
+y_test shape:  (26688,)
+Accuracy for various models:
+For Logistic Regression :   0.6757718824940048
+For Decision Tree :   0.6483438249400479
+For Guassian :   0.6719499400479616
+For KNN :   0.5765512589928058
+For AdaBoost :   0.6776453836930456
+For Gradient Boost :   0.7095323741007195
+For XGBoost :   0.7184877098321343
+Best model is  XGBoost
+Best params for XGBoost: {'subsample': 0.8, 'min_child_weight': 5, 'max_depth': 10, 'learning_rate': 0.1, 'gamma': 0, 'colsample_bytree': 1.0}
+Best Model is  XGBoost  with accuracy score:  0.7260191846522782
+Accuracy Score for Best model:  0.7260191846522782
+
