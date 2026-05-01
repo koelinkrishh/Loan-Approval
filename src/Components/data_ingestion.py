@@ -59,7 +59,7 @@ class DataIngestion:
          
          ## Splitting Dataset
          logging.info("Train Test split initiated")
-         train_set, test_set = train_test_split(df, test_size=0.3, random_state=42)
+         train_set, test_set = train_test_split(df, test_size=0.3, random_state=42, stratify=df['Default'])
          
          train_set.to_csv(self.ingestion_config.train_data_path, index=False, header=True)
          test_set.to_csv(self.ingestion_config.test_data_path, index=False, header=True)
@@ -81,5 +81,5 @@ if __name__=="__main__":
    
    Model_trainer = ModelTrainer()
    result = Model_trainer.Initiate_model_trainer(train_arr, test_arr)
-   print("Accuracy Score for Best model: ",result)
+   print("Best model evaluation: ",result)
    

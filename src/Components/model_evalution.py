@@ -2,7 +2,7 @@ from src.Exception import CustomException
 import os
 import sys
 
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
 
 def evaluate_models(X_train,X_test, y_train,y_test, models)-> dict:
    try:
@@ -16,15 +16,15 @@ def evaluate_models(X_train,X_test, y_train,y_test, models)-> dict:
       print("y_train shape: ",y_train.shape)
       print("y_test shape: ",y_test.shape)
       
-      print("Accuracy for various models: ")
+      print("F1-Score for various models: ")
       
       for i,m in enumerate(Algos):
          model = m
          model.fit(X_train, y_train)
          y_train_pred = model.predict(X_train)
          y_test_pred = model.predict(X_test)
-         train_model_score = accuracy_score(y_train, y_train_pred)
-         test_model_score = accuracy_score(y_test, y_test_pred)
+         train_model_score = f1_score(y_train, y_train_pred)
+         test_model_score = f1_score(y_test, y_test_pred)
          report[Algos_names[i]] = test_model_score
          
          print(f"For {Algos_names[i]} :  ",test_model_score)

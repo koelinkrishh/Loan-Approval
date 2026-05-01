@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from imblearn.over_sampling import SMOTE
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
@@ -43,7 +43,7 @@ class ModelTrainer:
          X_train,X_test, y_train,y_test = (train_array[:,:-1], test_array[:,:-1], 
             train_array[:,-1], test_array[:,-1])
          
-         # # Apply SMOTE to balance dataset
+         # Apply SMOTE to balance dataset
          logging.info("Applying SMOTE to balance the dataset")
          
          print("Class distribution before SMOTE:\n", pd.Series(y_train).value_counts())
@@ -51,7 +51,23 @@ class ModelTrainer:
          smote = SMOTE(sampling_strategy=1, random_state=42)  # Make `1`s 50% of `0`s
          X_train, y_train = smote.fit_resample(X_train, y_train)
          
-         print("Class distribution after SMOTE:\n", pd.Series(y_train).value_counts())
+         # # Balancing classes
+         # classes = np.unique(train_array[:, -1])
+         # class_0 = train_array[train_array[:, -1] == classes[0]]
+         # class_1 = train_array[train_array[:, -1] == classes[1]]
+         
+         # n_samples = min(len(class_0), len(class_1))
+         
+         # class_0_sampled = class_0[np.random.choice(class_0.shape[0], n_samples, replace=False)]
+         # class_1_sampled = class_1[np.random.choice(class_1.shape[0], n_samples, replace=False)]
+         
+         # train_array_balanced = np.vstack((class_0_sampled, class_1_sampled))
+         # np.random.shuffle(train_array_balanced)
+         
+         # X_train, X_test, y_train, y_test = (train_array_balanced[:,:-1], test_array[:,:-1], 
+         #    train_array_balanced[:,-1], test_array[:,-1])
+         
+         print("Class distribution after balancing:\n", pd.Series(y_train).value_counts())
          
          models = {
             'Logistic Regression': LogisticRegression(),
@@ -74,8 +90,8 @@ class ModelTrainer:
          
          print("Best model is ",best_model_name)
          
-         if best_model_score<0.6:
-            raise CustomException("No Best model found")
+         if best_model_score<0.5:
+            raise CustomException("No Best model found", sys)
          logging.info("Best model found on both training and testing dataset")
          
          ## Hyperparameter tuning for the best model
@@ -89,8 +105,9 @@ class ModelTrainer:
          predicted = best_model.predict(X_test)
          acc = accuracy_score(y_test, predicted)
          print("Best Model is ", best_model_name," with accuracy score: ",acc)
+         classification_rep = classification_report(y_test, predicted)
          
-         return acc
+         return classification_rep
       except Exception as e:
          raise CustomException(e, sys)
    

@@ -43,6 +43,6 @@ streamlit run app.py  # For Streamlit
 
 ### 📈 Results
 
-The final model achieves _% accuracy on the test dataset, with a ROC-AUC score of _%. 
+The final model achieves 73% accuracy on the test dataset. 
 
 Feature importance analysis reveals that Credit History and Applicant Income are the most influential factors.

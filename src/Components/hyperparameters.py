@@ -58,7 +58,7 @@ def hyperparameter_tuning(model_name, model, X_train, y_train):
       
       if model_name in param_grid:
          logging.info(f"Performing hyperparameter tuning for {model_name}")
-         grid_search = RandomizedSearchCV(model, param_grid[model_name], n_iter=50,cv=3, scoring='accuracy', n_jobs=-1)
+         grid_search = RandomizedSearchCV(model, param_grid[model_name], n_iter=50,cv=3, scoring='f1', n_jobs=-1)
          grid_search.fit(X_train, y_train)
          logging.info(f"Best params for {model_name}: {grid_search.best_params_}")
          print(f"Best params for {model_name}: {grid_search.best_params_}")
